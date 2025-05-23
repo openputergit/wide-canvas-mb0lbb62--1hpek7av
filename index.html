@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkinCheck AI - Medical Image Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="min-h-screen">
+        <!-- Navigation -->
+        <nav class="bg-white shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-blue-600">SkinCheck AI</h1>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button id="loginBtn" class="px-4 py-2 rounded-lg text-blue-600 hover:bg-blue-50">Login</button>
+                        <button id="signupBtn" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Sign Up</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Authentication Modal -->
+        <div id="authModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+                <div id="loginForm" class="space-y-4">
+                    <h2 class="text-2xl font-bold text-center" id="authTitle">Login</h2>
+                    <input type="email" placeholder="Email" class="w-full p-2 border rounded-lg" required>
+                    <input type="password" placeholder="Password" class="w-full p-2 border rounded-lg" required>
+                    <button class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Continue</button>
+                    <p class="text-center">
+                        <span id="authToggleText">Don't have an account?</span>
+                        <a href="#" id="authToggleBtn" class="text-blue-600 hover:underline">Sign up</a>
+                    </p>
+                    <button id="closeAuthModal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">AI-Powered Skin Analysis</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Upload an image of the affected skin area and our advanced AI will analyze it for potential skin conditions or early signs of cancer.</p>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="max-w-xl mx-auto bg-white rounded-xl shadow-md p-6">
+                <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors">
+                    <i class="bi bi-cloud-upload text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600">Drag and drop your image here or</p>
+                    <button class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Choose File
+                    </button>
+                    <input type="file" id="fileInput" class="hidden" accept="image/*">
+                </div>
+
+                <!-- Preview Section -->
+                <div id="previewSection" class="hidden mt-6">
+                    <img id="imagePreview" class="max-w-full h-auto rounded-lg mx-auto" src="" alt="Preview">
+                    <div class="mt-4 flex justify-center">
+                        <button id="analyzeBtn" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            Analyze Image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultsSection" class="hidden mt-6">
+                    <div class="p-4 rounded-lg bg-gray-50">
+                        <h3 class="font-bold text-lg mb-2">Analysis Results</h3>
+                        <div id="resultsContent" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const imagePreview = document.getElementById('imagePreview');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsContent = document.getElementById('resultsContent');
+        const authModal = document.getElementById('authModal');
+        const loginBtn = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+        const closeAuthModal = document.getElementById('closeAuthModal');
+        const authTitle = document.getElementById('authTitle');
+        const authToggleBtn = document.getElementById('authToggleBtn');
+        const authToggleText = document.getElementById('authToggleText');
+
+        // Auth Modal Handling
+        let isLoginMode = true;
+
+        function toggleAuthModal() {
+            authModal.classList.toggle('hidden');
+        }
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            authToggleText.textContent = isLoginMode ? "Don't have an account?" : "Already have an account?";
+            authToggleBtn.textContent = isLoginMode ? "Sign up" : "Login";
+        }
+
+        loginBtn.addEventListener('click', () => {
+            isLoginMode = true;
+            authTitle.textContent = 'Login';
+            toggleAuthModal();
+        });
+
+        signupBtn.addEventListener('click', () => {
+            isLoginMode = false;
+            authTitle.textContent = 'Sign Up';
+            toggleAuthModal();
+        });
+
+        closeAuthModal.addEventListener('click', toggleAuthModal);
+        authToggleBtn.addEventListener('click', toggleAuthMode);
+
+        // File Upload Handling
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-blue-500');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500');
+            const file = e.dataTransfer.files[0];
+            handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            handleFile(file);
+        });
+
+        function handleFile(file) {
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    previewSection.classList.remove('hidden');
+                    resultsSection.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert('Please upload a valid image file.');
+            }
+        }
+
+        // Analysis Handling
+        analyzeBtn.addEventListener('click', async () => {
+            // Show loading state
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = `
+                <i class="bi bi-arrow-repeat loading-spinner inline-block mr-2"></i>
+                Analyzing...
+            `;
+
+            // Simulate API call (replace with actual API endpoint)
+            try {
+                // Here you would normally:
+                // 1. Upload the image to your server
+                // 2. Get the analysis results from your CNN model
+                // For demo, we'll simulate a response after 2 seconds
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Sample response (replace with actual API integration)
+                const mockResult = {
+                    condition: "Potential Melanoma",
+                    confidence: 85,
+                    recommendations: [
+                        "Consult a dermatologist immediately",
+                        "Avoid sun exposure",
+                        "Document any changes in the affected area"
+                    ]
+                };
+
+                displayResults(mockResult);
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                alert('Analysis failed. Please try again.');
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = 'Analyze Image';
+            }
+        });
+
+        function displayResults(result) {
+            resultsContent.innerHTML = `
+                <div class="p-4 ${result.confidence > 70 ? 'bg-red-100' : 'bg-yellow-100'} rounded-lg">
+                    <p class="font-semibold">Detected Condition:</p>
+                    <p class="text-lg">${result.condition}</p>
+                    <p class="mt-2">Confidence: ${result.confidence}%</p>
+                </div>
+                <div class="mt-4">
+                    <p class="font-semibold">Recommendations:</p>
+                    <ul class="list-disc pl-5 mt-2">
+                        ${result.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            resultsSection.classList.remove('hidden');
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
